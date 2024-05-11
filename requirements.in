@@ -3,5 +3,5 @@ numpy
 statsmodels
 matplotlib
 pymc
-scipy<1.13.0
+scipy
 pytensor
