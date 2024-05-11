@@ -1,7 +1,7 @@
 import textwrap
 import numpy as np
 import pandas as pd
-from pandas.api.types import is_list_like, is_datetime64_dtype
+from pandas.api.types import is_list_like
 
 from causalimpact.misc import standardize_all_variables, df_print, get_matplotlib
 from causalimpact.model import construct_model, model_fit
@@ -181,9 +181,11 @@ class CausalImpact:
         if isinstance(data.index, pd.core.indexes.datetimes.DatetimeIndex):
             pre_period = [pd.to_datetime(date) for date in pre_period]
             post_period = [pd.to_datetime(date) for date in post_period]
-            is_datetime64_dtype(pre_period)
+            pd.core.dtypes.common.is_datetime_or_timedelta_dtype(pre_period)
         # if index is not datetime then error if datetime pre and post is passed
-        elif is_datetime64_dtype(pd.Series(pre_period)) or is_datetime64_dtype(
+        elif pd.core.dtypes.common.is_datetime_or_timedelta_dtype(
+            pd.Series(pre_period)
+        ) or pd.core.dtypes.common.is_datetime_or_timedelta_dtype(
             pd.Series(post_period)
         ):
             raise ValueError(
@@ -691,13 +693,19 @@ class CausalImpact:
                 )
             )
         else:
-            stmt5 = textwrap.dedent(
-                """The probability of obtaining this effect by
-                chance is p = {p}. This means the effect may
-                be spurious and would generally not be considered
-                statistically significant.""".format(p=np.round(p_value, 3)
-                )
-            )
+            stmt5 = """The probability of obtaining this effect by
+                        chance is p = ", round(p, 3), "). This means the effect may
+                        be spurious and would generally not be considered
+                        statistically significant.""".format()
+
+
+        return {
+            "1": " ".join(" ".join(stmt.split("\n")).split()),
+            "2": " ".join(" ".join(stmt2.split("\n")).split()),
+            "3": " ".join(" ".join(stmt3.split("\n")).split()),
+            "4": " ".join(" ".join(stmt4.split("\n")).split()),
+            "5": " ".join(" ".join(stmt5.split("\n")).split())
+        }
 
         print(textwrap.fill(stmt, width=width))
         print("\n")
@@ -795,7 +803,7 @@ class CausalImpact:
         p_value_perc = p_value * 100
         prob_causal_perc = prob_causal * 100
 
-        if output == "summary":
+        if output == "return_summary":
             # Posterior inference {CausalImpact}
             summary = [
                 [mean_resp_fmt, cum_resp_fmt],
@@ -829,9 +837,9 @@ class CausalImpact:
                     "Prob. of Causal Effect",
                 ],
             )
-            df_print(summary, path)
+            return summary
         elif output == "report":
-            self._print_report(
+            return self._print_report(
                 mean_pred_fmt,
                 mean_resp_fmt,
                 mean_lower_fmt,
